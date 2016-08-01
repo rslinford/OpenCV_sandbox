@@ -172,11 +172,8 @@ def create_default_config(config_file_name):
    with open(config_file_name, 'w') as f:
       json.dump(config, f)
    print('New config file created.')
-   show_config(config_file_nam   e)
+   show_config(config_file_name)
 
-"""
-Testing 
-"""
 def main():
    config_file_name = r'edit_video_config.json'
    try:
