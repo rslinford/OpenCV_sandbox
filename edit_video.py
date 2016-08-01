@@ -22,11 +22,22 @@ def get_user_input(video_source):
    cap = None
    try:
       base_dir, source_file = os.path.split(video_source)
-
       cap = cv2.VideoCapture(video_source)
+
+      #
+      # Gotta love fourcc insanity. MP4's from my phone return a CAP_PROP_FOURCC of 828601953. Observe:
+      #
+      #    828601953 --hex--> 31 63 76 61 --ascii--> 1cva --reversed--> avc1
+      #
+      # The mystery codec: AVC1
+      #
+      # Which isn't supported on Windows. So this whole exercise... purely academic. Wee!
+      #
+      original_fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
+
       original_fps = cap.get(cv2.CAP_PROP_FPS)
       original_video_size = get_cap_prop_size(cap)
-      original_fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
+
       original_format = cap.get(cv2.CAP_PROP_FORMAT)
       original_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
       (x, y) = (0, 0)
@@ -112,12 +123,10 @@ def save_result(video_source, x,y, w,h, keep_frame_mod):
       frame_counter = -1
 
       # Write the resulting movie
-      #target_file = r'xy%d-%d_%dx%d_mod%d_%s_.avi' % (x, y, w, h, keep_frame_mod, source_file)
-      target_file = r'xy%d-%d_%dx%d_mod%d_%s_.mp4' % (x, y, w, h, keep_frame_mod, source_file)
+      target_file = r'xy%d-%d_%dx%d_mod%d_%s_.avi' % (x, y, w, h, keep_frame_mod, source_file)
       print('\t\tto\n\t%s' % target_file)
 
-      #fourcc = cv2.VideoWriter_fourcc(*'XVID')
-      fourcc = cv2.VideoWriter_fourcc(*'avc1')
+      fourcc = cv2.VideoWriter_fourcc(*'XVID')
       video = cv2.VideoWriter(r'%s\%s' % (base_dir, target_file), fourcc, original_fps, (w,h), True)
       display_on = True
       frame_counter = -1
