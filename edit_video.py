@@ -26,6 +26,9 @@ def get_user_input(video_source):
       cap = cv2.VideoCapture(video_source)
       original_fps = cap.get(cv2.CAP_PROP_FPS)
       original_video_size = get_cap_prop_size(cap)
+      original_fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
+      original_format = cap.get(cv2.CAP_PROP_FORMAT)
+      original_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
       (x, y) = (0, 0)
       (w, h) = (original_video_size[0], original_video_size[1])
       keep_frame_mod = 1
@@ -49,7 +52,7 @@ def get_user_input(video_source):
             continue
 
          cv2.rectangle(original_frame, (x, y), (x+w, y+h), (0, 0, 255), 1)
-         status_text = r'Original %s -> %s at %s Frame 1/%d' % (str((original_video_size)), str((w,h)), str((x,y)), keep_frame_mod)
+         status_text = r'Original %s -> %s at %s Keep 1/%d Frame %d of %s' % (str((original_video_size)), str((w,h)), str((x,y)), keep_frame_mod, frame_counter, original_frame_count)
          text_color = (0, 0, 255)
          text_thickness = 1
          cv2.putText(original_frame, status_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness)
@@ -109,10 +112,12 @@ def save_result(video_source, x,y, w,h, keep_frame_mod):
       frame_counter = -1
 
       # Write the resulting movie
-      target_file = r'xy%d-%d_%dx%d_mod%d_%s_.avi' % (x, y, w, h, keep_frame_mod, source_file)
+      #target_file = r'xy%d-%d_%dx%d_mod%d_%s_.avi' % (x, y, w, h, keep_frame_mod, source_file)
+      target_file = r'xy%d-%d_%dx%d_mod%d_%s_.mp4' % (x, y, w, h, keep_frame_mod, source_file)
       print('\t\tto\n\t%s' % target_file)
 
-      fourcc = cv2.VideoWriter_fourcc(*'XVID')
+      #fourcc = cv2.VideoWriter_fourcc(*'XVID')
+      fourcc = cv2.VideoWriter_fourcc(*'avc1')
       video = cv2.VideoWriter(r'%s\%s' % (base_dir, target_file), fourcc, original_fps, (w,h), True)
       display_on = True
       frame_counter = -1
