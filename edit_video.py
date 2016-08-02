@@ -1,6 +1,7 @@
 import os
 import json
 import imutils
+import numpy as np
 import cv2
 
 config_file_name = r'edit_video_config.json'
@@ -79,9 +80,15 @@ def get_user_input(config):
             anchor_crop_points = current_crop_points
 
          delta_crop_frame = cv2.absdiff(anchor_crop_frame, current_crop_frame)
+         src1 = np.float32(anchor_crop_frame)
+         src2 = np.float32(current_crop_frame)
+         (xshift, yshift), some_number = cv2.phaseCorrelate(src1, src2)
+         xshift = int(xshift)
+         yshift = int(yshift)
 
          # Draw on the original frame. It's "defaced" after this so no more analysis.
          cv2.rectangle(original_frame, (x, y), (x2, y2), (0, 0, 255), 1)
+         cv2.rectangle(original_frame, (x+xshift, y+yshift), (x2+xshift, y2+yshift), (0, 255, 0), 1)
 
          status_text = r'Original %s -> %s at %s Keep 1/%d Frame %d of %s' % (str((original_video_size)), str((x2-x,y2-y)), str((x,y)), keep_frame_mod, frame_counter, original_frame_count)
          text_color = (0, 0, 255)
