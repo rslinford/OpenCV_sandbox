@@ -11,9 +11,9 @@ def toggle_display(display_on, frame):
    ensure_a_window(display_on, frame)
    return not display_on
 
-def show(display_on, original_frame):
+def show(display_on, original_frame, title='Video'):
    if display_on:
-      cv2.imshow('Video', original_frame)
+      cv2.imshow(title, original_frame)
 
 def get_cap_prop_size(cap):
    return (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
@@ -40,14 +40,19 @@ def get_user_input(video_source):
 
       original_format = cap.get(cv2.CAP_PROP_FORMAT)
       original_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-      (x, y) = (0, 0)
-      (w, h) = (original_video_size[0], original_video_size[1])
+      #(x, y) = (0, 0)
+      #(w, h) = (original_video_size[0], original_video_size[1])
+      (x, y) = (172, 735)
+      (w, h) = (364, 115)
       keep_frame_mod = 1
       frame_counter = -1
 
       print('Processing movie width(%d) height(%d) in(%s) from:\n\t%s' % (original_video_size[0], original_video_size[1], base_dir, source_file))
 
       user_is_selecting_size = True
+
+      previous_crop_frame = None
+      previous_crop_points = None
       while user_is_selecting_size:
          (grabbed, original_frame) = cap.read()
          # if the frame could not be grabbed, then we have reached the end of the video
@@ -62,12 +67,30 @@ def get_user_input(video_source):
          if frame_counter % keep_frame_mod != 0:
             continue
 
+         y2 = y + h
+         x2 = x + w
+         current_crop_points = (x, y, x2, y2)
+         gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
+         current_crop_frame = gray_frame[y:y2, x:x2]
+         if (previous_crop_frame is None) or (not previous_crop_points == current_crop_points):
+            previous_crop_frame = current_crop_frame
+            previous_crop_points = current_crop_points
+
+         delta_crop_frame = cv2.absdiff(previous_crop_frame, current_crop_frame)
+         s = frame_counter % 7 - 3
+         ys, y2s, xs, x2s = y+s, y2+s, x+s, x2+s
+         previous_crop_frame = gray_frame[ys:y2s, xs:x2s]
+         previous_crop_points = current_crop_points
+
+         # Draw on the original frame. It's "defaced" after this so no more analysis.
          cv2.rectangle(original_frame, (x, y), (x+w, y+h), (0, 0, 255), 1)
+
          status_text = r'Original %s -> %s at %s Keep 1/%d Frame %d of %s' % (str((original_video_size)), str((w,h)), str((x,y)), keep_frame_mod, frame_counter, original_frame_count)
          text_color = (0, 0, 255)
          text_thickness = 1
          cv2.putText(original_frame, status_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness)
          show(True, original_frame)
+         show(True, delta_crop_frame, title='Delta')
  
          key = cv2.waitKey(1) & 0xFF
          if key == ord('q'):
