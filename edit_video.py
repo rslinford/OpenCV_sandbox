@@ -3,6 +3,8 @@ import json
 import imutils
 import cv2
 
+config_file_name = r'edit_video_config.json'
+
 def ensure_a_window(display_on, frame):
    show(display_on, frame)
 
@@ -18,9 +20,10 @@ def show(display_on, original_frame, title='Video'):
 def get_cap_prop_size(cap):
    return (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
 
-def get_user_input(video_source):
+def get_user_input(config):
    cap = None
    try:
+      video_source = config['video_source']
       base_dir, source_file = os.path.split(video_source)
       cap = cv2.VideoCapture(video_source)
 
@@ -40,10 +43,10 @@ def get_user_input(video_source):
 
       original_format = cap.get(cv2.CAP_PROP_FORMAT)
       original_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-      #(x, y) = (0, 0)
-      #(w, h) = (original_video_size[0], original_video_size[1])
-      (x, y) = (172, 735)
-      (w, h) = (364, 115)
+
+      (x, y, x2, y2) = config.get('crop_points', (0,0,original_video_size[0], original_video_size[1]))
+      w = x2 - x
+      h = y2 - y
       keep_frame_mod = 1
       frame_counter = -1
 
@@ -51,8 +54,8 @@ def get_user_input(video_source):
 
       user_is_selecting_size = True
 
-      previous_crop_frame = None
-      previous_crop_points = None
+      anchor_crop_frame = None
+      anchor_crop_points = None
       while user_is_selecting_size:
          (grabbed, original_frame) = cap.read()
          # if the frame could not be grabbed, then we have reached the end of the video
@@ -67,25 +70,21 @@ def get_user_input(video_source):
          if frame_counter % keep_frame_mod != 0:
             continue
 
-         y2 = y + h
-         x2 = x + w
+         #y2 = y + h
+         #x2 = x + w
          current_crop_points = (x, y, x2, y2)
          gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
          current_crop_frame = gray_frame[y:y2, x:x2]
-         if (previous_crop_frame is None) or (not previous_crop_points == current_crop_points):
-            previous_crop_frame = current_crop_frame
-            previous_crop_points = current_crop_points
+         if (anchor_crop_frame is None) or (not anchor_crop_points == current_crop_points):
+            anchor_crop_frame = current_crop_frame
+            anchor_crop_points = current_crop_points
 
-         delta_crop_frame = cv2.absdiff(previous_crop_frame, current_crop_frame)
-         s = frame_counter % 7 - 3
-         ys, y2s, xs, x2s = y+s, y2+s, x+s, x2+s
-         previous_crop_frame = gray_frame[ys:y2s, xs:x2s]
-         previous_crop_points = current_crop_points
+         delta_crop_frame = cv2.absdiff(anchor_crop_frame, current_crop_frame)
 
          # Draw on the original frame. It's "defaced" after this so no more analysis.
-         cv2.rectangle(original_frame, (x, y), (x+w, y+h), (0, 0, 255), 1)
+         cv2.rectangle(original_frame, (x, y), (x2, y2), (0, 0, 255), 1)
 
-         status_text = r'Original %s -> %s at %s Keep 1/%d Frame %d of %s' % (str((original_video_size)), str((w,h)), str((x,y)), keep_frame_mod, frame_counter, original_frame_count)
+         status_text = r'Original %s -> %s at %s Keep 1/%d Frame %d of %s' % (str((original_video_size)), str((x2-x,y2-y)), str((x,y)), keep_frame_mod, frame_counter, original_frame_count)
          text_color = (0, 0, 255)
          text_thickness = 1
          cv2.putText(original_frame, status_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness)
@@ -104,14 +103,14 @@ def get_user_input(video_source):
             y -= 1
          elif key == ord('s') and y < original_video_size[1]:
             y += 1
-         elif key == ord('j') and w > 1:
-            w -= 1
-         elif key == ord('l') and w < original_video_size[0]:
-            w += 1
-         elif key == ord('i') and h > 1:
-            h -= 1
-         elif key == ord('k') and h < original_video_size[1]:
-            h += 1
+         elif key == ord('j') and x2 > 1:
+            x2 -= 1
+         elif key == ord('l') and x2 < original_video_size[0]:
+            x2 += 1
+         elif key == ord('i') and y2 > 1:
+            y2 -= 1
+         elif key == ord('k') and y2 < original_video_size[1]:
+            y2 += 1
          elif key == ord('o'):
             # move on to next step, writing the clipped video
             user_is_selecting_size = False
@@ -119,8 +118,10 @@ def get_user_input(video_source):
             keep_frame_mod += 1
          elif key == ord('v') and keep_frame_mod > 1:
             keep_frame_mod -= 1
+         elif key == ord('z'):
+            save_config_crop_points(anchor_crop_points)
 
-      return (x,y,w,h,keep_frame_mod)
+      return (x,y,x2,y2,keep_frame_mod)
    except (KeyboardInterrupt):
       print('Program ending per user reqeust.')
       raise
@@ -134,7 +135,7 @@ def get_user_input(video_source):
       print('Destroying any OpenCV')
       cv2.destroyAllWindows()
 
-def save_result(video_source, x,y, w,h, keep_frame_mod):
+def save_result(video_source, x,y, x2,y2, keep_frame_mod):
    video = None
    cap = None
    try:
@@ -146,11 +147,11 @@ def save_result(video_source, x,y, w,h, keep_frame_mod):
       frame_counter = -1
 
       # Write the resulting movie
-      target_file = r'xy%d-%d_%dx%d_mod%d_%s_.avi' % (x, y, w, h, keep_frame_mod, source_file)
+      target_file = r'xy%d-%d_%dx%d_mod%d_%s_.avi' % (x, y, x2, y2, keep_frame_mod, source_file)
       print('\t\tto\n\t%s' % target_file)
 
       fourcc = cv2.VideoWriter_fourcc(*'XVID')
-      video = cv2.VideoWriter(r'%s\%s' % (base_dir, target_file), fourcc, original_fps, (w,h), True)
+      video = cv2.VideoWriter(r'%s\%s' % (base_dir, target_file), fourcc, original_fps, (x2-x, y2-y), True)
       display_on = True
       frame_counter = -1
       while True:
@@ -163,8 +164,6 @@ def save_result(video_source, x,y, w,h, keep_frame_mod):
          if frame_counter % keep_frame_mod != 0:
             continue
 
-         y2 = y + h
-         x2 = x + w
          new_frame = original_frame[y:y2, x:x2, :]
 
          video.write(new_frame)
@@ -196,7 +195,7 @@ def edit_movie(video_source):
    (x, y, w, h, keep_frame_mod) = get_user_input(video_source)
    save_result(video_source, x, y, w, h, keep_frame_mod)
 
-def show_config(config_file_name):
+def print_config_file():
    print('Please edit config file:\n\t%s\nPoint source to your video. Use fully qualified path or relative to the current working directory:\n\t%s' \
       % (config_file_name, os.getcwd()))
    print('Current config contents:')
@@ -204,25 +203,36 @@ def show_config(config_file_name):
       for line in f:
          print(line)
 
-def create_default_config(config_file_name):
-   config = {'video_source':'your_video.mp4'}
+def save_config(config):
    with open(config_file_name, 'w') as f:
       json.dump(config, f)
+
+def save_config_crop_points(crop_points):
+   config = load_config()
+   config['crop_points'] = crop_points
+   save_config(config)
+
+def create_default_config():
+   config = {'video_source':'your_video.mp4'}
+   save_config(config)
    print('New config file created.')
-   show_config(config_file_name)
+   print_config_file()
+
+def load_config():
+   with open(config_file_name, 'r') as f:
+      config = json.load(f)
+   return config
 
 def main():
-   config_file_name = r'edit_video_config.json'
    try:
-      with open(config_file_name, 'r') as f:
-         config = json.load(f)
+      config = load_config()
       video_source = config['video_source']
       if not os.path.isfile(video_source):
-         show_config(config_file_name)
+         print_config_file()
          return 1
-      edit_movie(video_source)
+      edit_movie(config)
    except (FileNotFoundError):
-      create_default_config(config_file_name)
+      create_default_config()
 
 if __name__ == '__main__':
    try:
