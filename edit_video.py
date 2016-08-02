@@ -28,13 +28,14 @@ def get_user_input(config):
       cap = cv2.VideoCapture(video_source)
 
       #
-      # Gotta love fourcc insanity. MP4's from my phone return a CAP_PROP_FOURCC of 828601953. Observe:
+      # MP4's from my phone return a CAP_PROP_FOURCC of 828601953:
       #
       #    828601953 --hex--> 31 63 76 61 --ascii--> 1cva --reversed--> avc1
       #
       # The mystery codec: AVC1
       #
-      # Which isn't supported on Windows. So this whole exercise... purely academic. Wee!
+      # Which isn't supported on Windows. Which is why XVID is hard coded further below. You'll probably have
+      # to change it to work on you system depending on installed codecs.
       #
       original_fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
 
@@ -70,8 +71,6 @@ def get_user_input(config):
          if frame_counter % keep_frame_mod != 0:
             continue
 
-         #y2 = y + h
-         #x2 = x + w
          current_crop_points = (x, y, x2, y2)
          gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
          current_crop_frame = gray_frame[y:y2, x:x2]
