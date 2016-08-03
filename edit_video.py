@@ -56,7 +56,7 @@ def get_user_input(config):
 
       user_is_selecting_size = True
 
-      anchor_crop_frame = None
+      anchor_gray_frame = None
       anchor_crop_points = None
       while user_is_selecting_size:
          (grabbed, original_frame) = cap.read()
@@ -74,14 +74,12 @@ def get_user_input(config):
 
          current_crop_points = (x, y, x2, y2)
          gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
-         current_crop_frame = gray_frame[y:y2, x:x2]
-         if (anchor_crop_frame is None) or (not anchor_crop_points == current_crop_points):
-            anchor_crop_frame = current_crop_frame
+         if (anchor_gray_frame is None) or (not anchor_crop_points == current_crop_points):
+            anchor_gray_frame = gray_frame
             anchor_crop_points = current_crop_points
 
-         delta_crop_frame = cv2.absdiff(anchor_crop_frame, current_crop_frame)
-         src1 = np.float32(anchor_crop_frame)
-         src2 = np.float32(current_crop_frame)
+         src1 = np.float32(anchor_gray_frame)
+         src2 = np.float32(gray_frame)
          (xshift, yshift), some_number = cv2.phaseCorrelate(src1, src2)
          xshift = int(xshift)
          yshift = int(yshift)
@@ -95,7 +93,6 @@ def get_user_input(config):
          text_thickness = 1
          cv2.putText(original_frame, status_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness)
          show(True, original_frame)
-         show(True, delta_crop_frame, title='Delta')
  
          key = cv2.waitKey(1) & 0xFF
          if key == ord('q'):
@@ -127,7 +124,7 @@ def get_user_input(config):
          elif key == ord('z'):
             save_config_crop_points(anchor_crop_points)
 
-      return (x,y,x2,y2,keep_frame_mod)
+      return (x,y,x2,y2,keep_frame_mod, anchor_gray_frame)
    except (KeyboardInterrupt):
       print('Program ending per user reqeust.')
       raise
@@ -141,10 +138,11 @@ def get_user_input(config):
       print('Destroying any OpenCV')
       cv2.destroyAllWindows()
 
-def save_result(video_source, x,y, x2,y2, keep_frame_mod):
+def save_result(config, x,y, x2,y2, keep_frame_mod, anchor_gray_frame):
    video = None
    cap = None
    try:
+      video_source = config['video_source']
       base_dir, source_file = os.path.split(video_source)
 
       cap = cv2.VideoCapture(video_source)
@@ -160,6 +158,7 @@ def save_result(video_source, x,y, x2,y2, keep_frame_mod):
       video = cv2.VideoWriter(r'%s\%s' % (base_dir, target_file), fourcc, original_fps, (x2-x, y2-y), True)
       display_on = True
       frame_counter = -1
+      src1 = np.float32(anchor_gray_frame)
       while True:
          (grabbed, original_frame) = cap.read()
          # if the frame could not be grabbed, then we have reached the end of the video
@@ -170,7 +169,14 @@ def save_result(video_source, x,y, x2,y2, keep_frame_mod):
          if frame_counter % keep_frame_mod != 0:
             continue
 
-         new_frame = original_frame[y:y2, x:x2, :]
+         gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
+         src2 = np.float32(gray_frame)
+         (xshift, yshift), some_number = cv2.phaseCorrelate(src1, src2)
+         xshift = int(xshift)
+         yshift = int(yshift)
+         xs, ys, xs2, ys2 = x+xshift, y+yshift, x2+xshift, y2+yshift
+
+         new_frame = original_frame[ys:ys2, xs:xs2, :]
 
          video.write(new_frame)
          show(display_on, new_frame)
@@ -197,9 +203,9 @@ def save_result(video_source, x,y, x2,y2, keep_frame_mod):
       print('Destroying any OpenCV')
       cv2.destroyAllWindows()
 
-def edit_movie(video_source):
-   (x, y, w, h, keep_frame_mod) = get_user_input(video_source)
-   save_result(video_source, x, y, w, h, keep_frame_mod)
+def edit_movie(config):
+   (x, y, w, h, keep_frame_mod, anchor_gray_frame) = get_user_input(config)
+   save_result(config, x, y, w, h, keep_frame_mod, anchor_gray_frame)
 
 def print_config_file():
    print('Please edit config file:\n\t%s\nPoint source to your video. Use fully qualified path or relative to the current working directory:\n\t%s' \
