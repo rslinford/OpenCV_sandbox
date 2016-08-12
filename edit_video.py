@@ -23,6 +23,7 @@ def get_cap_prop_size(cap):
 
 def get_user_input(config):
    cap = None
+   steady_the_cam = False
    try:
       video_source = config['video_source']
       base_dir, source_file = os.path.split(video_source)
@@ -73,22 +74,28 @@ def get_user_input(config):
             continue
 
          current_crop_points = (x, y, x2, y2)
-         gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
-         if (anchor_gray_frame is None) or (not anchor_crop_points == current_crop_points):
-            anchor_gray_frame = gray_frame
-            anchor_crop_points = current_crop_points
 
-         src1 = np.float32(anchor_gray_frame)
-         src2 = np.float32(gray_frame)
-         (xshift, yshift), some_number = cv2.phaseCorrelate(src1, src2)
-         xshift = int(xshift)
-         yshift = int(yshift)
+         if steady_the_cam:
+            gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
+            if (anchor_gray_frame is None) or (not anchor_crop_points == current_crop_points):
+               anchor_gray_frame = gray_frame
+               anchor_crop_points = current_crop_points
+
+            src1 = np.float32(anchor_gray_frame)
+            src2 = np.float32(gray_frame)
+            (xshift, yshift), some_number = cv2.phaseCorrelate(src1, src2)
+            xshift = int(xshift)
+            yshift = int(yshift)
+         else:
+            xshift = 0
+            yshift = 0
 
          # Draw on the original frame. It's "defaced" after this so no more analysis.
          cv2.rectangle(original_frame, (x, y), (x2, y2), (0, 0, 255), 1)
-         cv2.rectangle(original_frame, (x+xshift, y+yshift), (x2+xshift, y2+yshift), (0, 255, 0), 1)
+         if steady_the_cam:
+            cv2.rectangle(original_frame, (x+xshift, y+yshift), (x2+xshift, y2+yshift), (0, 255, 0), 1)
 
-         status_text = r'Original %s -> %s at %s Keep 1/%d Frame %d of %s' % (str((original_video_size)), str((x2-x,y2-y)), str((x,y)), keep_frame_mod, frame_counter, original_frame_count)
+         status_text = r'Original %s -> %s at %s Steady(%d) Keep 1/%d Frame %d of %s' % (str((original_video_size)), str((x2-x,y2-y)), str((x,y)), steady_the_cam, keep_frame_mod, frame_counter, original_frame_count)
          text_color = (0, 0, 255)
          text_thickness = 1
          cv2.putText(original_frame, status_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness)
@@ -119,12 +126,14 @@ def get_user_input(config):
             user_is_selecting_size = False
          elif key == ord('f'):
             keep_frame_mod += 1
+         elif key == ord('x'):
+            steady_the_cam = not steady_the_cam
          elif key == ord('v') and keep_frame_mod > 1:
             keep_frame_mod -= 1
          elif key == ord('z'):
             save_config_crop_points(anchor_crop_points)
 
-      return (x,y,x2,y2,keep_frame_mod, anchor_gray_frame)
+      return (x,y,x2,y2,keep_frame_mod, steady_the_cam, anchor_gray_frame)
    except (KeyboardInterrupt):
       print('Program ending per user reqeust.')
       raise
@@ -138,7 +147,7 @@ def get_user_input(config):
       print('Destroying any OpenCV')
       cv2.destroyAllWindows()
 
-def save_result(config, x,y, x2,y2, keep_frame_mod, anchor_gray_frame):
+def save_result(config, x,y, x2,y2, keep_frame_mod, steady_the_cam, anchor_gray_frame):
    video = None
    cap = None
    try:
@@ -169,11 +178,15 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, anchor_gray_frame):
          if frame_counter % keep_frame_mod != 0:
             continue
 
-         gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
-         src2 = np.float32(gray_frame)
-         (xshift, yshift), some_number = cv2.phaseCorrelate(src1, src2)
-         xshift = int(xshift)
-         yshift = int(yshift)
+         if steady_the_cam:
+            gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
+            src2 = np.float32(gray_frame)
+            (xshift, yshift), some_number = cv2.phaseCorrelate(src1, src2)
+            xshift = int(xshift)
+            yshift = int(yshift)
+         else:
+            xshift = 0
+            yshift = 0
          xs, ys, xs2, ys2 = x+xshift, y+yshift, x2+xshift, y2+yshift
 
          new_frame = original_frame[ys:ys2, xs:xs2, :]
@@ -204,8 +217,8 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, anchor_gray_frame):
       cv2.destroyAllWindows()
 
 def edit_movie(config):
-   (x, y, w, h, keep_frame_mod, anchor_gray_frame) = get_user_input(config)
-   save_result(config, x, y, w, h, keep_frame_mod, anchor_gray_frame)
+   (x, y, w, h, keep_frame_mod, steady_the_cam, anchor_gray_frame) = get_user_input(config)
+   save_result(config, x, y, w, h, keep_frame_mod, steady_the_cam, anchor_gray_frame)
 
 def print_config_file():
    print('Please edit config file:\n\t%s\nPoint source to your video. Use fully qualified path or relative to the current working directory:\n\t%s' \
