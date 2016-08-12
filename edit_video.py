@@ -131,7 +131,7 @@ def get_user_input(config):
          elif key == ord('v') and keep_frame_mod > 1:
             keep_frame_mod -= 1
          elif key == ord('z'):
-            save_config_crop_points(anchor_crop_points)
+            save_config_crop_points(current_crop_points)
 
       return (x,y,x2,y2,keep_frame_mod, steady_the_cam, anchor_gray_frame)
    except (KeyboardInterrupt):
