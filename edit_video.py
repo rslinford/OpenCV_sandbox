@@ -183,12 +183,9 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_the_cam, anchor_gray_
             gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
             src2 = np.float32(gray_frame)
             (xshift, yshift), some_number = cv2.phaseCorrelate(src1, src2)
-            xshift = int(xshift)
-            yshift = int(yshift)
+            xs, ys, xs2, ys2 = round(x+xshift), round(y+yshift), round(x2+xshift), round(y2+yshift)
          else:
-            xshift = 0
-            yshift = 0
-         xs, ys, xs2, ys2 = x+xshift, y+yshift, x2+xshift, y2+yshift
+            xs, ys, xs2, ys2 = x, y, x2, y2
 
          new_frame = original_frame[ys:ys2, xs:xs2, :]
 
