@@ -80,11 +80,11 @@ def get_user_input(config):
             gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
             if (anchor_gray_frame is None) or (not anchor_crop_points == current_crop_points):
                anchor_gray_frame = gray_frame
+               anchor_gray_frame_float32 = np.float32(anchor_gray_frame)
                anchor_crop_points = current_crop_points
 
-            src1 = np.float32(anchor_gray_frame)
-            src2 = np.float32(gray_frame)
-            (xshift, yshift), some_number = cv2.phaseCorrelate(src1, src2)
+            gray_frame_float32 = np.float32(gray_frame)
+            (xshift, yshift), some_number = cv2.phaseCorrelate(anchor_gray_frame_float32, gray_frame_float32)
          else:
             xshift = 0
             yshift = 0
@@ -100,8 +100,8 @@ def get_user_input(config):
          text_color = (0, 0, 255)
          text_thickness = 1
          cv2.putText(original_frame, status_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness)
+
          show(True, original_frame)
- 
          key = cv2.waitKey(1) & 0xFF
          if key == ord('q'):
             # abort
@@ -161,14 +161,14 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_the_cam, anchor_gray_
       frame_counter = -1
 
       # Write the resulting movie
-      target_file = r'xy%d-%d_%dx%d_mod%d_%s_.avi' % (x, y, x2, y2, keep_frame_mod, source_file)
+      target_file = r'xy%d-%d_%dx%d_mod%d_steady(%d)_%s_.avi' % (x, y, x2, y2, keep_frame_mod, steady_the_cam, source_file)
       print('\t\tto\n\t%s' % target_file)
 
       fourcc = cv2.VideoWriter_fourcc(*'XVID')
       video = cv2.VideoWriter(r'%s\%s' % (base_dir, target_file), fourcc, original_fps, (x2-x, y2-y), True)
       display_on = True
       frame_counter = -1
-      src1 = np.float32(anchor_gray_frame)
+      anchor_gray_frame_float32 = np.float32(anchor_gray_frame)
       while True:
          (grabbed, original_frame) = cap.read()
          # if the frame could not be grabbed, then we have reached the end of the video
@@ -181,8 +181,8 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_the_cam, anchor_gray_
 
          if steady_the_cam:
             gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
-            src2 = np.float32(gray_frame)
-            (xshift, yshift), some_number = cv2.phaseCorrelate(src1, src2)
+            gray_frame_float32 = np.float32(gray_frame)
+            (xshift, yshift), some_number = cv2.phaseCorrelate(anchor_gray_frame_float32, gray_frame_float32)
             xs, ys, xs2, ys2 = round(x+xshift), round(y+yshift), round(x2+xshift), round(y2+yshift)
          else:
             xs, ys, xs2, ys2 = x, y, x2, y2
