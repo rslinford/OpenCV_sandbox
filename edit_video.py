@@ -23,9 +23,10 @@ def get_cap_prop_size(cap):
 
 def get_user_input(config):
    cap = None
-   steady_the_cam = False
    try:
       video_source = config['video_source']
+      keep_frame_mod = config.get('keep_frame_mod', 1)
+      steady_the_cam = config.get('steady_the_cam', False)
       base_dir, source_file = os.path.split(video_source)
       cap = cv2.VideoCapture(video_source)
 
@@ -50,7 +51,6 @@ def get_user_input(config):
       (x, y, x2, y2) = config.get('crop_points', (0,0,original_video_size[0], original_video_size[1]))
       w = x2 - x
       h = y2 - y
-      keep_frame_mod = 1
       frame_counter = -1
 
       print('Processing movie width(%d) height(%d) in(%s) from:\n\t%s' % (original_video_size[0], original_video_size[1], base_dir, source_file))
@@ -96,7 +96,8 @@ def get_user_input(config):
             (xshifted, yshifted, x2shifted, y2shifted) = (round(x+xshift), round(y+yshift), round(x2+xshift), round(y2+yshift))
             cv2.rectangle(original_frame, (xshifted, yshifted), (x2shifted, y2shifted), (0, 255, 0), 1)
 
-         status_text = r'Original %s -> %s at %s Steady(%d) Keep 1/%d Frame %d of %s' % (str((original_video_size)), str((x2-x,y2-y)), str((x,y)), steady_the_cam, keep_frame_mod, frame_counter, original_frame_count)
+         status_text = r'Original %s -> %s at %s Steady(%d) Keep 1/%d Frame %d of %s' % \
+            (str((original_video_size)), str((x2-x,y2-y)), str((x,y)), steady_the_cam, keep_frame_mod, frame_counter, original_frame_count)
          text_color = (0, 0, 255)
          text_thickness = 1
          cv2.putText(original_frame, status_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness)
@@ -132,7 +133,8 @@ def get_user_input(config):
          elif key == ord('v') and keep_frame_mod > 1:
             keep_frame_mod -= 1
          elif key == ord('z'):
-            save_config_crop_points(current_crop_points)
+            save_config_crop_points(current_crop_points, keep_frame_mod, steady_the_cam)
+            print_config_file()
 
       return (x,y,x2,y2,keep_frame_mod, steady_the_cam, anchor_gray_frame)
    except (KeyboardInterrupt):
@@ -219,7 +221,7 @@ def edit_movie(config):
    save_result(config, x, y, w, h, keep_frame_mod, steady_the_cam, anchor_gray_frame)
 
 def print_config_file():
-   print('Please edit config file:\n\t%s\nPoint source to your video. Use fully qualified path or relative to the current working directory:\n\t%s' \
+   print('Config file located at:\n\t%s\nPoint "video_source" path to your video. Use fully qualified path or relative path. Current working directory:\n\t%s' \
       % (config_file_name, os.getcwd()))
    print('Current config contents:')
    with open(config_file_name, 'r') as f:
@@ -230,9 +232,11 @@ def save_config(config):
    with open(config_file_name, 'w') as f:
       json.dump(config, f)
 
-def save_config_crop_points(crop_points):
+def save_config_crop_points(crop_points, keep_frame_mod, steady_the_cam):
    config = load_config()
    config['crop_points'] = crop_points
+   config['keep_frame_mod'] = keep_frame_mod
+   config['steady_the_cam'] = steady_the_cam
    save_config(config)
 
 def create_default_config():
