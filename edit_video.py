@@ -160,7 +160,7 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_the_cam, anchor_gray_
       cap = cv2.VideoCapture(video_source)
       original_fps = cap.get(cv2.CAP_PROP_FPS)
       original_video_size = get_cap_prop_size(cap)
-      frame_counter = -1
+      original_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
       # Write the resulting movie
       target_file = r'xy%d-%d_%dx%d_mod%d_steady(%d)_%s_.avi' % (x, y, x2, y2, keep_frame_mod, steady_the_cam, source_file)
@@ -192,6 +192,13 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_the_cam, anchor_gray_
          new_frame = original_frame[ys:ys2, xs:xs2, :]
 
          video.write(new_frame)
+
+         status_text = r'Original %s -> %s at %s Steady(%d) Keep 1/%d Frame %d of %s' % \
+            (str((original_video_size)), str((x2-x,y2-y)), str((x,y)), steady_the_cam, keep_frame_mod, frame_counter, original_frame_count)
+         text_color = (0, 0, 255)
+         text_thickness = 1
+         cv2.putText(new_frame, status_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness)
+
          show(display_on, new_frame)
  
          key = cv2.waitKey(1) & 0xFF
