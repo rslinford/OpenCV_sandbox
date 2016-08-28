@@ -37,8 +37,8 @@ def get_user_input(config):
       #
       # The mystery codec: AVC1
       #
-      # Which isn't supported on Windows. Which is why XVID is hard coded further below. You'll probably have
-      # to change it to work on you system depending on installed codecs.
+      # Which isn't supported on Windows. Which is why XVID is the default config. You'll probably have
+      # to change the config file for 'fourcc_text' depending on installed codecs for your system.
       #
       original_fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
 
@@ -155,6 +155,7 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_the_cam, anchor_gray_
    cap = None
    try:
       video_source = config['video_source']
+      fourcc_text = config.get('fourcc_text', 'XVID')
       base_dir, source_file = os.path.split(video_source)
 
       cap = cv2.VideoCapture(video_source)
@@ -166,7 +167,7 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_the_cam, anchor_gray_
       target_file = r'xy%d-%d_%dx%d_mod%d_steady(%d)_%s_.avi' % (x, y, x2, y2, keep_frame_mod, steady_the_cam, source_file)
       print('\t\tto\n\t%s' % target_file)
 
-      fourcc = cv2.VideoWriter_fourcc(*'XVID')
+      fourcc = cv2.VideoWriter_fourcc(*fourcc_text)
       video = cv2.VideoWriter(r'%s\%s' % (base_dir, target_file), fourcc, original_fps, (x2-x, y2-y), True)
       display_on = True
       frame_counter = -1
@@ -247,7 +248,7 @@ def save_config_crop_points(crop_points, keep_frame_mod, steady_the_cam):
    save_config(config)
 
 def create_default_config():
-   config = {'video_source':'your_video.mp4'}
+   config = {'video_source':'your_video.mp4', 'fourcc_text':'XVID', 'keep_frame_mod':1, 'steady_the_cam':False}
    save_config(config)
    print('New config file created.')
    print_config_file()
