@@ -21,6 +21,13 @@ def show(display_on, original_frame, title='Video'):
 def get_cap_prop_size(cap):
    return (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
 
+def draw_status_text(frame, original_video_size, x,y, x2,y2, steady_the_cam, keep_frame_mod, frame_counter, original_frame_count):
+   status_text = r'Original %s -> %s at %s Steady(%d) Keep 1/%d Frame %d of %s' % \
+      (str((original_video_size)), str((x2-x,y2-y)), str((x,y)), steady_the_cam, keep_frame_mod, frame_counter, original_frame_count)
+   text_color = (0, 0, 255)
+   text_thickness = 1
+   cv2.putText(frame, status_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness)
+
 def get_user_input(config):
    cap = None
    try:
@@ -96,11 +103,7 @@ def get_user_input(config):
             (xshifted, yshifted, x2shifted, y2shifted) = (round(x+xshift), round(y+yshift), round(x2+xshift), round(y2+yshift))
             cv2.rectangle(original_frame, (xshifted, yshifted), (x2shifted, y2shifted), (0, 255, 0), 1)
 
-         status_text = r'Original %s -> %s at %s Steady(%d) Keep 1/%d Frame %d of %s' % \
-            (str((original_video_size)), str((x2-x,y2-y)), str((x,y)), steady_the_cam, keep_frame_mod, frame_counter, original_frame_count)
-         text_color = (0, 0, 255)
-         text_thickness = 1
-         cv2.putText(original_frame, status_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness)
+         draw_status_text(original_frame, original_video_size, x,y, x2,y2, steady_the_cam, keep_frame_mod, frame_counter, original_frame_count)
 
          show(True, original_frame)
          key = cv2.waitKey(1) & 0xFF
@@ -133,7 +136,7 @@ def get_user_input(config):
          elif key == ord('v') and keep_frame_mod > 1:
             keep_frame_mod -= 1
          elif key == ord('z'):
-            save_config_crop_points(current_crop_points, keep_frame_mod, steady_the_cam)
+            save_config_user_prefs(current_crop_points, keep_frame_mod, steady_the_cam)
             print_config_file()
 
       return (x,y,x2,y2,keep_frame_mod, steady_the_cam, anchor_gray_frame)
@@ -191,17 +194,12 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_the_cam, anchor_gray_
             xs, ys, xs2, ys2 = x, y, x2, y2
 
          new_frame = original_frame[ys:ys2, xs:xs2, :]
-
          video.write(new_frame)
 
-         status_text = r'Original %s -> %s at %s Steady(%d) Keep 1/%d Frame %d of %s' % \
-            (str((original_video_size)), str((x2-x,y2-y)), str((x,y)), steady_the_cam, keep_frame_mod, frame_counter, original_frame_count)
-         text_color = (0, 0, 255)
-         text_thickness = 1
-         cv2.putText(new_frame, status_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness)
-
+         # new_frame has been written to disk. Now we can deface new_frame for user feedback.
+         draw_status_text(new_frame, original_video_size, x,y, x2,y2, steady_the_cam, keep_frame_mod, frame_counter, original_frame_count)
          show(display_on, new_frame)
- 
+
          key = cv2.waitKey(1) & 0xFF
          if key == ord('q'):
             raise KeyboardInterrupt
@@ -240,7 +238,7 @@ def save_config(config):
    with open(config_file_name, 'w') as f:
       json.dump(config, f)
 
-def save_config_crop_points(crop_points, keep_frame_mod, steady_the_cam):
+def save_config_user_prefs(crop_points, keep_frame_mod, steady_the_cam):
    config = load_config()
    config['crop_points'] = crop_points
    config['keep_frame_mod'] = keep_frame_mod
