@@ -61,6 +61,12 @@ def get_user_input(config):
       original_format = cap.get(cv2.CAP_PROP_FORMAT)
       original_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+      """
+      # Setting FPS has no effect in my environment
+      cap.set(cv2.CAP_PROP_FPS, 5.0)
+      print('CAP_PROP_FPS(%s)' % cap.get(cv2.CAP_PROP_FPS))
+      """
+
       (x, y, x2, y2) = config.get('crop_points', (0,0,original_video_size[0], original_video_size[1]))
       w = x2 - x
       h = y2 - y
@@ -71,8 +77,9 @@ def get_user_input(config):
       anchor_crop_points = None
       frame_counter = -1
 
+      keeper_frame = None
       while user_is_selecting_size:
-         (grabbed, original_frame) = cap.read()
+         (grabbed, current_frame) = cap.read()
          # if the frame could not be grabbed, then we have reached the end of the video
          if not grabbed:
             # Loop it
@@ -82,11 +89,13 @@ def get_user_input(config):
             continue
 
          frame_counter += 1
-         if frame_counter % keep_frame_mod == 0:
-            # A "keeper" frame. Perform analsys to be compared against the next "keeper" frame.
+         is_keeper_frame = frame_counter % keep_frame_mod == 0
+         if is_keeper_frame:
+            # Perform analsys against a previous keeper_frame.
+            keeper_frame = current_frame
             current_crop_points = (x, y, x2, y2)
             if steady_mode:
-               gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
+               gray_frame = cv2.cvtColor(current_frame, cv2.COLOR_BGR2GRAY)
                if (anchor_gray_frame is None) or (not anchor_crop_points == current_crop_points):
                   anchor_gray_frame = gray_frame
                   anchor_gray_frame_float32 = np.float32(anchor_gray_frame)
@@ -96,20 +105,19 @@ def get_user_input(config):
             else:
                xshift = 0
                yshift = 0
+               if keeper_frame is None:
+                  keeper_frame = current_frame
 
-         # Draw frame whether or not it's a "keeper" to maintain responsiveness to user input. We may want to 
-         # indicate "non-keeper" frames somehow, hopefully in a way that doesn't induce seizures. Gray them 
-         # slightly maybe?
-
-         # Draw on the original frame. It's "defaced" after this so no more analysis.
-         cv2.rectangle(original_frame, (x, y), (x2, y2), (0, 0, 255), 1)
+         # Clone the keeper_frame for markup. Leave keeper_frame untouched. Clone keeper_frame everytime to avoid getting messy, overlapping markup.
+         markup_frame = cv2.copyMakeBorder(keeper_frame, 0,0,0,0, cv2.BORDER_REPLICATE)
+         cv2.rectangle(markup_frame, (x, y), (x2, y2), (0, 0, 255), 1)
          if steady_mode:
             (xshifted, yshifted, x2shifted, y2shifted) = (round(x+xshift), round(y+yshift), round(x2+xshift), round(y2+yshift))
-            cv2.rectangle(original_frame, (xshifted, yshifted), (x2shifted, y2shifted), (0, 255, 0), 1)
+            cv2.rectangle(markup_frame, (xshifted, yshifted), (x2shifted, y2shifted), (0, 255, 0), 1)
 
-         draw_status_text(original_frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count)
+         draw_status_text(markup_frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count)
 
-         show(True, original_frame)
+         show(True, markup_frame)
          key = cv2.waitKey(1) & 0xFF
          if key == ord('q'):
             # abort
