@@ -21,9 +21,28 @@ def show(display_on, original_frame, title='Video'):
 def get_cap_prop_size(cap):
    return (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
 
-def draw_status_text(frame, original_video_size, x,y, x2,y2, steady_the_cam, keep_frame_mod, frame_counter, original_frame_count):
+def get_cap_prop_fourcc(cap):
+   """
+   This function is not used. It's here for research value. Basically it cost me half a day and
+   I can't bare to delete it.
+
+   RESEARCH
+   MP4's from my phone return a CAP_PROP_FOURCC of 828601953:
+   
+      828601953 --hex--> 31 63 76 61 --ascii--> 1cva --reversed--> avc1
+   
+   The mystery codec: AVC1
+   
+   Which isn't supported on Windows. Which is why 'XVID' is the default 'fourcc_text' and this function isn't used for now. 
+   You'll probably have to change the config file for 'fourcc_text' depending on installed codecs for your 
+   system.
+   """
+   original_fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
+   return original_fourcc
+
+def draw_status_text(frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count):
    status_text = r'Original %s -> %s at %s Steady(%d) Keep 1/%d Frame %d of %s' % \
-      (str((original_video_size)), str((x2-x,y2-y)), str((x,y)), steady_the_cam, keep_frame_mod, frame_counter, original_frame_count)
+      (str((original_video_size)), str((x2-x,y2-y)), str((x,y)), steady_mode, keep_frame_mod, frame_counter, original_frame_count)
    text_color = (0, 0, 255)
    text_thickness = 1
    cv2.putText(frame, status_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness)
@@ -33,39 +52,24 @@ def get_user_input(config):
    try:
       video_source = config['video_source']
       keep_frame_mod = config.get('keep_frame_mod', 1)
-      steady_the_cam = config.get('steady_the_cam', False)
+      steady_mode = config.get('steady_mode', False)
       base_dir, source_file = os.path.split(video_source)
+
       cap = cv2.VideoCapture(video_source)
-
-      #
-      # MP4's from my phone return a CAP_PROP_FOURCC of 828601953:
-      #
-      #    828601953 --hex--> 31 63 76 61 --ascii--> 1cva --reversed--> avc1
-      #
-      # The mystery codec: AVC1
-      #
-      # Which isn't supported on Windows. Which is why XVID is the default config. You'll probably have
-      # to change the config file for 'fourcc_text' depending on installed codecs for your system.
-      #
-      original_fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
-
       original_fps = cap.get(cv2.CAP_PROP_FPS)
       original_video_size = get_cap_prop_size(cap)
-
       original_format = cap.get(cv2.CAP_PROP_FORMAT)
       original_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
       (x, y, x2, y2) = config.get('crop_points', (0,0,original_video_size[0], original_video_size[1]))
       w = x2 - x
       h = y2 - y
-      frame_counter = -1
 
       print('Processing movie width(%d) height(%d) in(%s) from:\n\t%s' % (original_video_size[0], original_video_size[1], base_dir, source_file))
-
       user_is_selecting_size = True
-
       anchor_gray_frame = None
       anchor_crop_points = None
+      frame_counter = -1
 
       while user_is_selecting_size:
          (grabbed, original_frame) = cap.read()
@@ -78,32 +82,32 @@ def get_user_input(config):
             continue
 
          frame_counter += 1
-         if frame_counter % keep_frame_mod != 0:
-            continue
+         if frame_counter % keep_frame_mod == 0:
+            # A "keeper" frame. Perform analsys to be compared against the next "keeper" frame.
+            current_crop_points = (x, y, x2, y2)
+            if steady_mode:
+               gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
+               if (anchor_gray_frame is None) or (not anchor_crop_points == current_crop_points):
+                  anchor_gray_frame = gray_frame
+                  anchor_gray_frame_float32 = np.float32(anchor_gray_frame)
+                  anchor_crop_points = current_crop_points
+               gray_frame_float32 = np.float32(gray_frame)
+               (xshift, yshift), some_number = cv2.phaseCorrelate(anchor_gray_frame_float32, gray_frame_float32)
+            else:
+               xshift = 0
+               yshift = 0
 
-         current_crop_points = (x, y, x2, y2)
-
-         if steady_the_cam:
-            gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
-            if (anchor_gray_frame is None) or (not anchor_crop_points == current_crop_points):
-               anchor_gray_frame = gray_frame
-               anchor_gray_frame_float32 = np.float32(anchor_gray_frame)
-               anchor_crop_points = current_crop_points
-
-            gray_frame_float32 = np.float32(gray_frame)
-            (xshift, yshift), some_number = cv2.phaseCorrelate(anchor_gray_frame_float32, gray_frame_float32)
-         else:
-            xshift = 0
-            yshift = 0
+         # Draw frame whether or not it's a "keeper" to maintain responsiveness to user input. We may want to 
+         # indicate "non-keeper" frames somehow, hopefully in a way that doesn't induce seizures. Gray them 
+         # slightly maybe?
 
          # Draw on the original frame. It's "defaced" after this so no more analysis.
-
          cv2.rectangle(original_frame, (x, y), (x2, y2), (0, 0, 255), 1)
-         if steady_the_cam:
+         if steady_mode:
             (xshifted, yshifted, x2shifted, y2shifted) = (round(x+xshift), round(y+yshift), round(x2+xshift), round(y2+yshift))
             cv2.rectangle(original_frame, (xshifted, yshifted), (x2shifted, y2shifted), (0, 255, 0), 1)
 
-         draw_status_text(original_frame, original_video_size, x,y, x2,y2, steady_the_cam, keep_frame_mod, frame_counter, original_frame_count)
+         draw_status_text(original_frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count)
 
          show(True, original_frame)
          key = cv2.waitKey(1) & 0xFF
@@ -127,19 +131,19 @@ def get_user_input(config):
          elif key == ord('k') and y2 < original_video_size[1]:
             y2 += 1
          elif key == ord('o'):
-            # move on to next step, writing the clipped video
+            # move on to next step, writing the cropped video
             user_is_selecting_size = False
          elif key == ord('f'):
             keep_frame_mod += 1
          elif key == ord('x'):
-            steady_the_cam = not steady_the_cam
+            steady_mode = not steady_mode
          elif key == ord('v') and keep_frame_mod > 1:
             keep_frame_mod -= 1
          elif key == ord('z'):
-            save_config_user_prefs(current_crop_points, keep_frame_mod, steady_the_cam)
+            save_config_user_prefs(current_crop_points, keep_frame_mod, steady_mode)
             print_config_file()
 
-      return (x,y,x2,y2,keep_frame_mod, steady_the_cam, anchor_gray_frame)
+      return (x,y,x2,y2,keep_frame_mod, steady_mode, anchor_gray_frame)
    except (KeyboardInterrupt):
       print('Program ending per user reqeust.')
       raise
@@ -153,7 +157,7 @@ def get_user_input(config):
       print('Destroying any OpenCV')
       cv2.destroyAllWindows()
 
-def save_result(config, x,y, x2,y2, keep_frame_mod, steady_the_cam, anchor_gray_frame):
+def save_result(config, x,y, x2,y2, keep_frame_mod, steady_mode, anchor_gray_frame):
    video = None
    cap = None
    try:
@@ -167,7 +171,7 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_the_cam, anchor_gray_
       original_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
       # Write the resulting movie
-      target_file = r'xy%d-%d_%dx%d_mod%d_steady(%d)_%s_.avi' % (x, y, x2, y2, keep_frame_mod, steady_the_cam, source_file)
+      target_file = r'xy%d-%d_%dx%d_mod%d_steady(%d)_%s_.avi' % (x, y, x2, y2, keep_frame_mod, steady_mode, source_file)
       print('\t\tto\n\t%s' % target_file)
 
       fourcc = cv2.VideoWriter_fourcc(*fourcc_text)
@@ -185,7 +189,7 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_the_cam, anchor_gray_
          if frame_counter % keep_frame_mod != 0:
             continue
 
-         if steady_the_cam:
+         if steady_mode:
             gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
             gray_frame_float32 = np.float32(gray_frame)
             (xshift, yshift), some_number = cv2.phaseCorrelate(anchor_gray_frame_float32, gray_frame_float32)
@@ -197,7 +201,7 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_the_cam, anchor_gray_
          video.write(new_frame)
 
          # new_frame has been written to disk. Now we can deface new_frame for user feedback.
-         draw_status_text(new_frame, original_video_size, x,y, x2,y2, steady_the_cam, keep_frame_mod, frame_counter, original_frame_count)
+         draw_status_text(new_frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count)
          show(display_on, new_frame)
 
          key = cv2.waitKey(1) & 0xFF
@@ -223,8 +227,8 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_the_cam, anchor_gray_
       cv2.destroyAllWindows()
 
 def edit_movie(config):
-   (x, y, w, h, keep_frame_mod, steady_the_cam, anchor_gray_frame) = get_user_input(config)
-   save_result(config, x, y, w, h, keep_frame_mod, steady_the_cam, anchor_gray_frame)
+   (x, y, w, h, keep_frame_mod, steady_mode, anchor_gray_frame) = get_user_input(config)
+   save_result(config, x, y, w, h, keep_frame_mod, steady_mode, anchor_gray_frame)
 
 def print_config_file():
    print('Config file located at:\n\t%s\nPoint "video_source" path to your video. Use fully qualified path or relative path. Current working directory:\n\t%s' \
@@ -238,15 +242,15 @@ def save_config(config):
    with open(config_file_name, 'w') as f:
       json.dump(config, f)
 
-def save_config_user_prefs(crop_points, keep_frame_mod, steady_the_cam):
+def save_config_user_prefs(crop_points, keep_frame_mod, steady_mode):
    config = load_config()
    config['crop_points'] = crop_points
    config['keep_frame_mod'] = keep_frame_mod
-   config['steady_the_cam'] = steady_the_cam
+   config['steady_mode'] = steady_mode
    save_config(config)
 
 def create_default_config():
-   config = {'video_source':'your_video.mp4', 'fourcc_text':'XVID', 'keep_frame_mod':1, 'steady_the_cam':False}
+   config = {'video_source':'your_video.mp4', 'fourcc_text':'XVID', 'keep_frame_mod':1, 'steady_mode':False}
    save_config(config)
    print('New config file created.')
    print_config_file()
