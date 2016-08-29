@@ -273,6 +273,7 @@ def main():
       config = load_config()
       video_source = config['video_source']
       if not os.path.isfile(video_source):
+         print('video_source is not a file:\n\t%s' % video_source)
          print_config_file()
          return 1
       edit_movie(config)
