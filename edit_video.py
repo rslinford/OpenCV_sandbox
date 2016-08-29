@@ -46,7 +46,28 @@ def draw_status_text(frame, original_video_size, x,y, x2,y2, steady_mode, keep_f
    text_color = (0, 0, 255)
    text_thickness = 1
    cv2.putText(frame, status_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness)
+   draw_progress_bar(frame, original_video_size, keep_frame_mod, frame_counter, original_frame_count)
 
+def draw_progress_bar(frame, original_video_size, keep_frame_mod, frame_counter, original_frame_count):
+   pbar_len = original_video_size[0] - 2
+   pbar_height = 8
+   pbar_y1 = 30
+   ind_height = pbar_height - 2
+   ind_half_height = round(ind_height / 2)
+   ind_x1 = 0 + 3
+   ind_y1 = pbar_y1 + ind_half_height + 1
+   ind_max_len = pbar_len - 5
+   ind_len = round(ind_max_len * (frame_counter / original_frame_count))
+   ind_x2 = ind_len
+   cv2.line(frame, (ind_x1, ind_y1), (ind_x2, ind_y1), (250, 200, 100), ind_height)
+   keep_frame_total = int(original_frame_count / keep_frame_mod)
+   for i in range(keep_frame_total):
+      tick_x1 = ind_x1 + (i * keep_frame_mod)
+      tick_y1 = ind_y1 + 1
+      tick_y2 = ind_y1 + ind_half_height
+      cv2.line(frame, (tick_x1, tick_y1), (tick_x1, tick_y2), (0, 255, 0), 1)
+   cv2.rectangle(frame, (0, pbar_y1), (pbar_len-1, pbar_y1 + pbar_height), (0, 0, 255), 1)
+   
 def get_user_input(config):
    cap = None
    try:
