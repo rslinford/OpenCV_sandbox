@@ -41,32 +41,39 @@ def get_cap_prop_fourcc(cap):
    return original_fourcc
 
 def draw_status_text(frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count):
-   status_text = r'Original %s -> %s at %s Steady(%d) Keep 1/%d Frame %d of %s' % \
+   status_text = r'         %s -> %s at %s Steady(%d) Keep 1/%d Frame %d of %s' % \
       (str((original_video_size)), str((x2-x,y2-y)), str((x,y)), steady_mode, keep_frame_mod, frame_counter, original_frame_count)
    text_color = (0, 0, 255)
    text_thickness = 1
-   cv2.putText(frame, status_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness)
+   cv2.putText(frame, status_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness, cv2.LINE_AA)
    draw_progress_bar(frame, original_video_size, keep_frame_mod, frame_counter, original_frame_count)
 
 def draw_progress_bar(frame, original_video_size, keep_frame_mod, frame_counter, original_frame_count):
-   pbar_len = original_video_size[0] - 2
+   margin_len = 20
+   pbar_len = original_video_size[0] - margin_len*2
    pbar_height = 8
-   pbar_y1 = 30
+   pbar_x1 = margin_len
+   pbar_y1 = margin_len
+   pbar_x2 = pbar_x1 + pbar_len
+   pbar_y2 = pbar_y1 + pbar_height
    ind_height = pbar_height - 2
    ind_half_height = round(ind_height / 2)
-   ind_x1 = 0 + 3
+   ind_x1 = pbar_x1 + 3
    ind_y1 = pbar_y1 + ind_half_height + 1
    ind_max_len = pbar_len - 5
    ind_len = round(ind_max_len * (frame_counter / original_frame_count))
-   ind_x2 = ind_len
+   ind_x2 = ind_x1 + ind_len
+   tick_color = (50, 255, 150)
+   cv2.putText(frame, 'f (fewer) keeping 1 of every %d' % keep_frame_mod, (ind_x1, ind_y1 - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, tick_color, 1, cv2.LINE_AA)
+   cv2.putText(frame, 'v (more)     current frame #%d of %s' % (frame_counter, original_frame_count), (ind_x1, ind_y1 + ind_height + 11), cv2.FONT_HERSHEY_SIMPLEX, 0.5, tick_color, 1, cv2.LINE_AA)
    cv2.line(frame, (ind_x1, ind_y1), (ind_x2, ind_y1), (250, 200, 100), ind_height)
    keep_frame_total = int(original_frame_count / keep_frame_mod)
    for i in range(keep_frame_total):
-      tick_x1 = ind_x1 + (i * keep_frame_mod)
-      tick_y1 = ind_y1 + 1
+      tick_x1 = ind_x1 + int(ind_max_len * ((i+1) / keep_frame_total))
+      tick_y1 = ind_y1 + 2
       tick_y2 = ind_y1 + ind_half_height
-      cv2.line(frame, (tick_x1, tick_y1), (tick_x1, tick_y2), (0, 255, 0), 1)
-   cv2.rectangle(frame, (0, pbar_y1), (pbar_len-1, pbar_y1 + pbar_height), (0, 0, 255), 1)
+      cv2.line(frame, (tick_x1, tick_y1), (tick_x1, tick_y2), tick_color, 1)
+   cv2.rectangle(frame, (pbar_x1, pbar_y1), (pbar_x2, pbar_y2), (0, 0, 255), 1)
    
 def get_user_input(config):
    cap = None
