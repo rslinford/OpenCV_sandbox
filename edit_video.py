@@ -41,16 +41,38 @@ def get_cap_prop_fourcc(cap):
    return original_fourcc
 
 def draw_status_text(frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count):
-   status_text = r'         %s -> %s at %s Steady(%d) Keep 1/%d Frame %d of %s' % \
-      (str((original_video_size)), str((x2-x,y2-y)), str((x,y)), steady_mode, keep_frame_mod, frame_counter, original_frame_count)
-   text_color = (0, 0, 255)
    text_thickness = 1
-   cv2.putText(frame, status_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness, cv2.LINE_AA)
    draw_progress_bar(frame, keep_frame_mod, frame_counter, original_frame_count)
 
+   margin_len = 50
+   line_height = 20
+   keystroke_color = (50, 255, 150)
+   info_color = (0, 0, 255)
+   text_x1 = margin_len
+   text_y1 = margin_len + line_height * 3
+   orig_to_new_size_text = r'%s -> %s at %s' % (str((original_video_size)), str((x2-x,y2-y)), str((x,y)))
+   cv2.putText(frame, orig_to_new_size_text, (text_x1, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, info_color, text_thickness, cv2.LINE_AA)
+   text_y1 += line_height
+   cv2.putText(frame, 'o (create video)', (text_x1, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
+   text_y1 += line_height
+   cv2.putText(frame, 'z (save config)', (text_x1, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
+   text_y1 += line_height
+   cv2.putText(frame, 'x (steady mode) %s' % steady_mode, (text_x1, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
+   text_y1 += line_height
+   cv2.putText(frame, '  w', (text_x1-3, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
+   text_y1 += line_height - 3
+   cv2.putText(frame, 'a s d', (text_x1, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
+   text_y1 += line_height
+   cv2.putText(frame, '  i', (text_x1-3, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
+   text_y1 += line_height - 3
+   cv2.putText(frame, 'j k l', (text_x1, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
+   text_y1 += line_height
+   cv2.putText(frame, 'q (quit)', (text_x1, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
+
+
 def draw_progress_bar(frame, keep_frame_mod, frame_counter, original_frame_count):
+   margin_len = 50
    frame_width = frame.shape[1]
-   margin_len = 20
    pbar_len = frame_width - margin_len*2
    pbar_height = 8
    pbar_x1 = margin_len
