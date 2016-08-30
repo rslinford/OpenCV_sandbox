@@ -46,11 +46,12 @@ def draw_status_text(frame, original_video_size, x,y, x2,y2, steady_mode, keep_f
    text_color = (0, 0, 255)
    text_thickness = 1
    cv2.putText(frame, status_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, text_thickness, cv2.LINE_AA)
-   draw_progress_bar(frame, original_video_size, keep_frame_mod, frame_counter, original_frame_count)
+   draw_progress_bar(frame, keep_frame_mod, frame_counter, original_frame_count)
 
-def draw_progress_bar(frame, original_video_size, keep_frame_mod, frame_counter, original_frame_count):
+def draw_progress_bar(frame, keep_frame_mod, frame_counter, original_frame_count):
+   frame_width = frame.shape[1]
    margin_len = 20
-   pbar_len = original_video_size[0] - margin_len*2
+   pbar_len = frame_width - margin_len*2
    pbar_height = 8
    pbar_x1 = margin_len
    pbar_y1 = margin_len
