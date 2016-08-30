@@ -40,43 +40,26 @@ def get_cap_prop_fourcc(cap):
    original_fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
    return original_fourcc
 
-def draw_status_text(frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count):
-   text_thickness = 1
-   draw_progress_bar(frame, keep_frame_mod, frame_counter, original_frame_count)
+def draw_status(frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count):
+   sd = {
+      'text_thickness': 1, 
+      'margin_len': 50,
+      'line_height': 20,
+      'keystroke_color': (50, 255, 150),
+      'info_color': (0, 0, 255),
+      'font': cv2.FONT_HERSHEY_SIMPLEX,
+      'line': cv2.LINE_AA,
+      'scale': 0.5
+      }
+   draw_progress_bar(frame, keep_frame_mod, frame_counter, original_frame_count, sd)
+   draw_ui_keys(frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count, sd)
 
-   margin_len = 50
-   line_height = 20
-   keystroke_color = (50, 255, 150)
-   info_color = (0, 0, 255)
-   text_x1 = margin_len
-   text_y1 = margin_len + line_height * 3
-   orig_to_new_size_text = r'%s -> %s at %s' % (str((original_video_size)), str((x2-x,y2-y)), str((x,y)))
-   cv2.putText(frame, orig_to_new_size_text, (text_x1, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, info_color, text_thickness, cv2.LINE_AA)
-   text_y1 += line_height
-   cv2.putText(frame, 'o (create video)', (text_x1, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
-   text_y1 += line_height
-   cv2.putText(frame, 'z (save config)', (text_x1, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
-   text_y1 += line_height
-   cv2.putText(frame, 'x (steady mode) %s' % steady_mode, (text_x1, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
-   text_y1 += line_height
-   cv2.putText(frame, '  w', (text_x1-3, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
-   text_y1 += line_height - 3
-   cv2.putText(frame, 'a s d', (text_x1, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
-   text_y1 += line_height
-   cv2.putText(frame, '  i', (text_x1-3, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
-   text_y1 += line_height - 3
-   cv2.putText(frame, 'j k l', (text_x1, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
-   text_y1 += line_height
-   cv2.putText(frame, 'q (quit)', (text_x1, text_y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, keystroke_color, text_thickness, cv2.LINE_AA)
-
-
-def draw_progress_bar(frame, keep_frame_mod, frame_counter, original_frame_count):
-   margin_len = 50
+def draw_progress_bar(frame, keep_frame_mod, frame_counter, original_frame_count, sd):
    frame_width = frame.shape[1]
-   pbar_len = frame_width - margin_len*2
+   pbar_len = frame_width - sd['margin_len'] * 2
    pbar_height = 8
-   pbar_x1 = margin_len
-   pbar_y1 = margin_len
+   pbar_x1 = sd['margin_len']
+   pbar_y1 = sd['margin_len']
    pbar_x2 = pbar_x1 + pbar_len
    pbar_y2 = pbar_y1 + pbar_height
    ind_height = pbar_height - 2
@@ -86,18 +69,43 @@ def draw_progress_bar(frame, keep_frame_mod, frame_counter, original_frame_count
    ind_max_len = pbar_len - 5
    ind_len = round(ind_max_len * (frame_counter / original_frame_count))
    ind_x2 = ind_x1 + ind_len
-   tick_color = (50, 255, 150)
-   cv2.putText(frame, 'f (fewer) keeping 1 of every %d' % keep_frame_mod, (ind_x1, ind_y1 - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, tick_color, 1, cv2.LINE_AA)
-   cv2.putText(frame, 'v (more)     current frame #%d of %s' % (frame_counter, original_frame_count), (ind_x1, ind_y1 + ind_height + 11), cv2.FONT_HERSHEY_SIMPLEX, 0.5, tick_color, 1, cv2.LINE_AA)
+   draw_text(frame, 'f (fewer) keeping 1 of every %d' % keep_frame_mod, (ind_x1, ind_y1 - 8), sd) 
+   draw_text(frame, 'v (more)     current frame #%d of %s' % (frame_counter, original_frame_count), (ind_x1, ind_y1 + ind_height + 11), sd)
    cv2.line(frame, (ind_x1, ind_y1), (ind_x2, ind_y1), (250, 200, 100), ind_height)
    keep_frame_total = int(original_frame_count / keep_frame_mod)
    for i in range(keep_frame_total):
       tick_x1 = ind_x1 + int(ind_max_len * ((i+1) / keep_frame_total))
       tick_y1 = ind_y1 + 2
       tick_y2 = ind_y1 + ind_half_height
-      cv2.line(frame, (tick_x1, tick_y1), (tick_x1, tick_y2), tick_color, 1)
-   cv2.rectangle(frame, (pbar_x1, pbar_y1), (pbar_x2, pbar_y2), (0, 0, 255), 1)
-   
+      cv2.line(frame, (tick_x1, tick_y1), (tick_x1, tick_y2), sd['keystroke_color'], 1)
+   cv2.rectangle(frame, (pbar_x1, pbar_y1), (pbar_x2, pbar_y2), sd['info_color'], 1)
+
+def draw_text(frame, text, location, sd):
+   cv2.putText(frame, text, location, 
+               sd['font'], sd['scale'], sd['keystroke_color'], sd['text_thickness'], sd['line'])
+
+def draw_ui_keys(frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count, sd):
+   text_x1 = sd['margin_len']
+   text_y1 = sd['margin_len'] + sd['line_height'] * 3
+   orig_to_new_size_text = r'%s -> %s at %s' % (str((original_video_size)), str((x2-x,y2-y)), str((x,y)))
+   draw_text(frame, orig_to_new_size_text, (text_x1, text_y1), sd)
+   text_y1 += sd['line_height']
+   draw_text(frame, 'o (create video)', (text_x1, text_y1), sd)
+   text_y1 += sd['line_height']
+   draw_text(frame, 'z (save config)', (text_x1, text_y1), sd)
+   text_y1 += sd['line_height']
+   draw_text(frame, 'x (steady mode) %s' % steady_mode, (text_x1, text_y1), sd)
+   text_y1 += sd['line_height']
+   draw_text(frame, '  w', (text_x1-3, text_y1), sd)
+   text_y1 += sd['line_height'] - 3
+   draw_text(frame, 'a s d', (text_x1, text_y1), sd)
+   text_y1 += sd['line_height']
+   draw_text(frame, '  i', (text_x1-3, text_y1), sd)
+   text_y1 += sd['line_height'] - 3
+   draw_text(frame, 'j k l', (text_x1, text_y1), sd)
+   text_y1 += sd['line_height']
+   draw_text(frame, 'q (quit)', (text_x1, text_y1), sd)
+
 def get_user_input(config):
    cap = None
    try:
@@ -166,7 +174,7 @@ def get_user_input(config):
             (xshifted, yshifted, x2shifted, y2shifted) = (round(x+xshift), round(y+yshift), round(x2+xshift), round(y2+yshift))
             cv2.rectangle(markup_frame, (xshifted, yshifted), (x2shifted, y2shifted), (0, 255, 0), 1)
 
-         draw_status_text(markup_frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count)
+         draw_status(markup_frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count)
 
          show(True, markup_frame)
          key = cv2.waitKey(1) & 0xFF
@@ -260,7 +268,7 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_mode, anchor_gray_fra
          video.write(new_frame)
 
          # new_frame has been written to disk. Now we can deface new_frame for user feedback.
-         draw_status_text(new_frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count)
+         draw_status(new_frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count)
          show(display_on, new_frame)
 
          key = cv2.waitKey(1) & 0xFF
