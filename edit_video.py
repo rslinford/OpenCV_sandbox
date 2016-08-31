@@ -80,29 +80,40 @@ def draw_progress_bar(frame, keep_frame_mod, frame_counter, original_frame_count
       cv2.line(frame, (tick_x1, tick_y1), (tick_x1, tick_y2), sd['keystroke_color'], 1)
    cv2.rectangle(frame, (pbar_x1, pbar_y1), (pbar_x2, pbar_y2), sd['info_color'], 1)
 
-def draw_text(frame, text, location, sd):
+def draw_text(frame, text, location, sd, color = 'keystroke_color'):
    cv2.putText(frame, text, location, 
-               sd['font'], sd['scale'], sd['keystroke_color'], sd['text_thickness'], sd['line'])
+               sd['font'], sd['scale'], sd[color], sd['text_thickness'], sd['line'])
 
 def draw_ui_keys(frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count, sd):
+   # Crop-corner upper-left
+   (text_x1, text_y1) = (x + 5, y + sd['line_height'])
+   draw_text(frame, '%s' % str((x,y)), (text_x1, text_y1), sd, 'info_color')
+   text_x1 += 10
+   text_y1 += sd['line_height'] - 5
+   draw_text(frame, '  w', (text_x1-3, text_y1), sd)
+   text_y1 += sd['line_height'] - 5
+   draw_text(frame, 'a s d', (text_x1, text_y1), sd)
+
+   # Crop-corner lower-right
+   (text_x1, text_y1) = (x2 - sd['margin_len']*3, y2 - 10)
+   draw_text(frame, '%s' % str((x2,y2)), (text_x1, text_y1), sd, 'info_color')
+   text_x1 += 15
+   text_y1 -= sd['line_height'] - 2
+   draw_text(frame, 'j k l', (text_x1, text_y1), sd)
+   text_y1 -= sd['line_height'] - 5
+   draw_text(frame, '  i', (text_x1-3, text_y1), sd)
+
+   # Other keys
    text_x1 = sd['margin_len']
    text_y1 = sd['margin_len'] + sd['line_height'] * 3
    orig_to_new_size_text = r'%s -> %s at %s' % (str((original_video_size)), str((x2-x,y2-y)), str((x,y)))
-   draw_text(frame, orig_to_new_size_text, (text_x1, text_y1), sd)
+   draw_text(frame, orig_to_new_size_text, (text_x1, text_y1), sd, 'info_color')
    text_y1 += sd['line_height']
    draw_text(frame, 'o (create video)', (text_x1, text_y1), sd)
    text_y1 += sd['line_height']
    draw_text(frame, 'z (save config)', (text_x1, text_y1), sd)
    text_y1 += sd['line_height']
    draw_text(frame, 'x (steady mode) %s' % steady_mode, (text_x1, text_y1), sd)
-   text_y1 += sd['line_height']
-   draw_text(frame, '  w', (text_x1-3, text_y1), sd)
-   text_y1 += sd['line_height'] - 3
-   draw_text(frame, 'a s d', (text_x1, text_y1), sd)
-   text_y1 += sd['line_height']
-   draw_text(frame, '  i', (text_x1-3, text_y1), sd)
-   text_y1 += sd['line_height'] - 3
-   draw_text(frame, 'j k l', (text_x1, text_y1), sd)
    text_y1 += sd['line_height']
    draw_text(frame, 'q (quit)', (text_x1, text_y1), sd)
 
