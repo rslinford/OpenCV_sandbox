@@ -52,7 +52,7 @@ def draw_status(frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_
       'scale': 0.5
       }
    draw_progress_bar(frame, keep_frame_mod, frame_counter, original_frame_count, sd)
-   draw_ui_keys(frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count, sd)
+   draw_ui_keys(frame, original_video_size, x,y, x2,y2, steady_mode, sd)
 
 def draw_progress_bar(frame, keep_frame_mod, frame_counter, original_frame_count, sd):
    frame_width = frame.shape[1]
@@ -84,7 +84,7 @@ def draw_text(frame, text, location, sd, color = 'keystroke_color'):
    cv2.putText(frame, text, location, 
                sd['font'], sd['scale'], sd[color], sd['text_thickness'], sd['line'])
 
-def draw_ui_keys(frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count, sd):
+def draw_ui_keys(frame, original_video_size, x,y, x2,y2, steady_mode, sd):
    # Crop-corner upper-left
    (text_x1, text_y1) = (x + 5, y + sd['line_height'])
    draw_text(frame, '%s' % str((x,y)), (text_x1, text_y1), sd, 'info_color')
