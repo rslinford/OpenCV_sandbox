@@ -43,7 +43,7 @@ def get_cap_prop_fourcc(cap):
 def draw_status(frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count):
    sd = {
       'text_thickness': 1, 
-      'margin_len': 50,
+      'margin_len': 60,
       'line_height': 20,
       'keystroke_color': (50, 255, 150),
       'info_color': (0, 0, 255),
@@ -106,7 +106,7 @@ def draw_ui_keys(frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame
    # Other keys
    text_x1 = sd['margin_len']
    text_y1 = sd['margin_len'] + sd['line_height'] * 3
-   orig_to_new_size_text = r'%s -> %s at %s' % (str((original_video_size)), str((x2-x,y2-y)), str((x,y)))
+   orig_to_new_size_text = r'%s -> %s' % (str((original_video_size)), str((x2-x,y2-y)))
    draw_text(frame, orig_to_new_size_text, (text_x1, text_y1), sd, 'info_color')
    text_y1 += sd['line_height']
    draw_text(frame, 'o (create video)', (text_x1, text_y1), sd)
@@ -117,11 +117,15 @@ def draw_ui_keys(frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame
    text_y1 += sd['line_height']
    draw_text(frame, 'q (quit)', (text_x1, text_y1), sd)
 
-def get_user_input(config):
+def get_user_input_while_looping(config):
    cap = None
+   speed_up = True
+   frames_at_this_rate = None
    try:
       video_source = config['video_source']
       keep_frame_mod = config.get('keep_frame_mod', 1)
+      keep_frame_mod_min = config.get('keep_frame_mod_min', keep_frame_mod)
+      keep_frame_mod_max = config.get('keep_frame_mod_max', keep_frame_mod)
       steady_mode = config.get('steady_mode', False)
       base_dir, source_file = os.path.split(video_source)
 
@@ -137,9 +141,9 @@ def get_user_input(config):
       print('CAP_PROP_FPS(%s)' % cap.get(cv2.CAP_PROP_FPS))
       """
 
-      (x, y, x2, y2) = config.get('crop_points', (0,0,original_video_size[0], original_video_size[1]))
-      w = x2 - x
-      h = y2 - y
+      (x1, y1, x2, y2) = config.get('crop_points', (0,0,original_video_size[0], original_video_size[1]))
+      w = x2 - x1
+      h = y2 - y1
 
       print('Processing movie width(%d) height(%d) in(%s) from:\n\t%s' % (original_video_size[0], original_video_size[1], base_dir, source_file))
       user_is_selecting_size = True
@@ -163,7 +167,7 @@ def get_user_input(config):
          if is_keeper_frame:
             # Perform analsys against a previous keeper_frame.
             keeper_frame = current_frame
-            current_crop_points = (x, y, x2, y2)
+            current_crop_points = (x1, y1, x2, y2)
             if steady_mode:
                gray_frame = cv2.cvtColor(current_frame, cv2.COLOR_BGR2GRAY)
                if (anchor_gray_frame is None) or (not anchor_crop_points == current_crop_points):
@@ -178,28 +182,44 @@ def get_user_input(config):
                if keeper_frame is None:
                   keeper_frame = current_frame
 
+         if is_keeper_frame:
+            if frames_at_this_rate == 0 or frames_at_this_rate is None:
+               frames_at_this_rate = keep_frame_mod
+            frames_at_this_rate -= 1
+            if frames_at_this_rate == 0:
+               if speed_up:
+                  if keep_frame_mod > keep_frame_mod_min:
+                     keep_frame_mod -= 1
+                  else:
+                     speed_up = not speed_up
+               else:
+                  if keep_frame_mod < keep_frame_mod_max:
+                     keep_frame_mod += 1
+                  else:
+                     speed_up = not speed_up
+
          # Clone the keeper_frame for markup. Leave keeper_frame untouched. Clone keeper_frame everytime to avoid getting messy, overlapping markup.
          markup_frame = cv2.copyMakeBorder(keeper_frame, 0,0,0,0, cv2.BORDER_REPLICATE)
-         cv2.rectangle(markup_frame, (x, y), (x2, y2), (0, 0, 255), 1)
+         cv2.rectangle(markup_frame, (x1, y1), (x2, y2), (0, 0, 255), 1)
          if steady_mode:
-            (xshifted, yshifted, x2shifted, y2shifted) = (round(x+xshift), round(y+yshift), round(x2+xshift), round(y2+yshift))
+            (xshifted, yshifted, x2shifted, y2shifted) = (round(x1+xshift), round(y1+yshift), round(x2+xshift), round(y2+yshift))
             cv2.rectangle(markup_frame, (xshifted, yshifted), (x2shifted, y2shifted), (0, 255, 0), 1)
 
-         draw_status(markup_frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count)
+         draw_status(markup_frame, original_video_size, x1,y1, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count)
 
          show(True, markup_frame)
          key = cv2.waitKey(1) & 0xFF
          if key == ord('q'):
             # abort
             raise KeyboardInterrupt
-         elif key == ord('a') and x > 0:
-            x -= 1
-         elif key == ord('d') and x < original_video_size[0]:
-            x += 1
-         elif key == ord('w') and y > 0:
-            y -= 1
-         elif key == ord('s') and y < original_video_size[1]:
-            y += 1
+         elif key == ord('a') and x1 > 0:
+            x1 -= 1
+         elif key == ord('d') and x1 < original_video_size[0]:
+            x1 += 1
+         elif key == ord('w') and y1 > 0:
+            y1 -= 1
+         elif key == ord('s') and y1 < original_video_size[1]:
+            y1 += 1
          elif key == ord('j') and x2 > 1:
             x2 -= 1
          elif key == ord('l') and x2 < original_video_size[0]:
@@ -218,10 +238,10 @@ def get_user_input(config):
          elif key == ord('v') and keep_frame_mod > 1:
             keep_frame_mod -= 1
          elif key == ord('z'):
-            save_config_user_prefs(current_crop_points, keep_frame_mod, steady_mode)
+            save_config_user_prefs(current_crop_points, keep_frame_mod, keep_frame_mod_min, keep_frame_mod_max, steady_mode)
             print_config_file()
 
-      return (x,y,x2,y2,keep_frame_mod, steady_mode, anchor_gray_frame)
+      return (x1,y1, x2,y2, keep_frame_mod, keep_frame_mod_min, keep_frame_mod_max, steady_mode, anchor_gray_frame)
    except (KeyboardInterrupt):
       print('Program ending per user reqeust.')
       raise
@@ -235,9 +255,11 @@ def get_user_input(config):
       print('Destroying any OpenCV')
       cv2.destroyAllWindows()
 
-def save_result(config, x,y, x2,y2, keep_frame_mod, steady_mode, anchor_gray_frame):
+def write_video(config, x1,y1, x2,y2, keep_frame_mod, keep_frame_mod_min, keep_frame_mod_max, steady_mode, anchor_gray_frame):
    video = None
    cap = None
+   speed_up = True
+   frames_at_this_rate = None
    try:
       video_source = config['video_source']
       fourcc_text = config.get('fourcc_text', 'XVID')
@@ -249,11 +271,11 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_mode, anchor_gray_fra
       original_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
       # Write the resulting movie
-      target_file = r'xy%d-%d_%dx%d_mod%d_steady(%d)_%s_.avi' % (x, y, x2, y2, keep_frame_mod, steady_mode, source_file)
+      target_file = r'xy%d-%d_%dx%d_mod%d_steady(%d)_%s_.avi' % (x1, y1, x2, y2, keep_frame_mod, steady_mode, source_file)
       print('\t\tto\n\t%s' % target_file)
 
       fourcc = cv2.VideoWriter_fourcc(*fourcc_text)
-      video = cv2.VideoWriter(r'%s\%s' % (base_dir, target_file), fourcc, original_fps, (x2-x, y2-y), True)
+      video = cv2.VideoWriter(r'%s\%s' % (base_dir, target_file), fourcc, original_fps, (x2-x1, y2-y1), True)
       display_on = True
       frame_counter = -1
       anchor_gray_frame_float32 = np.float32(anchor_gray_frame)
@@ -267,19 +289,34 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_mode, anchor_gray_fra
          if frame_counter % keep_frame_mod != 0:
             continue
 
+         if frames_at_this_rate == 0 or frames_at_this_rate is None:
+            frames_at_this_rate = keep_frame_mod
+         frames_at_this_rate -= 1
+         if frames_at_this_rate == 0:
+            if speed_up:
+               if keep_frame_mod > keep_frame_mod_min:
+                  keep_frame_mod -= 1
+               else:
+                  speed_up = not speed_up
+            else:
+               if keep_frame_mod < keep_frame_mod_max:
+                  keep_frame_mod += 1
+               else:
+                  speed_up = not speed_up
+
          if steady_mode:
             gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
             gray_frame_float32 = np.float32(gray_frame)
             (xshift, yshift), some_number = cv2.phaseCorrelate(anchor_gray_frame_float32, gray_frame_float32)
-            xs, ys, xs2, ys2 = round(x+xshift), round(y+yshift), round(x2+xshift), round(y2+yshift)
+            xs, ys, xs2, ys2 = round(x1+xshift), round(y1+yshift), round(x2+xshift), round(y2+yshift)
          else:
-            xs, ys, xs2, ys2 = x, y, x2, y2
+            xs, ys, xs2, ys2 = x1, y1, x2, y2
 
          new_frame = original_frame[ys:ys2, xs:xs2, :]
          video.write(new_frame)
 
          # new_frame has been written to disk. Now we can deface new_frame for user feedback.
-         draw_status(new_frame, original_video_size, x,y, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count)
+         draw_status(new_frame, original_video_size, x1,y1, x2,y2, steady_mode, keep_frame_mod, frame_counter, original_frame_count)
          show(display_on, new_frame)
 
          key = cv2.waitKey(1) & 0xFF
@@ -305,8 +342,8 @@ def save_result(config, x,y, x2,y2, keep_frame_mod, steady_mode, anchor_gray_fra
       cv2.destroyAllWindows()
 
 def edit_movie(config):
-   (x, y, w, h, keep_frame_mod, steady_mode, anchor_gray_frame) = get_user_input(config)
-   save_result(config, x, y, w, h, keep_frame_mod, steady_mode, anchor_gray_frame)
+   (x1, y1, x2, y2, keep_frame_mod, keep_frame_mod_min, keep_frame_mod_max, steady_mode, anchor_gray_frame) = get_user_input_while_looping(config)
+   write_video(config, x1,y1, x2,y2, keep_frame_mod, keep_frame_mod_min, keep_frame_mod_max, steady_mode, anchor_gray_frame)
 
 def print_config_file():
    print('Config file located at:\n\t%s\nPoint "video_source" path to your video. Use fully qualified path or relative path. Current working directory:\n\t%s' \
@@ -320,10 +357,12 @@ def save_config(config):
    with open(config_file_name, 'w') as f:
       json.dump(config, f)
 
-def save_config_user_prefs(crop_points, keep_frame_mod, steady_mode):
+def save_config_user_prefs(crop_points, keep_frame_mod, keep_frame_mod_min, keep_frame_mod_max, steady_mode):
    config = load_config()
    config['crop_points'] = crop_points
    config['keep_frame_mod'] = keep_frame_mod
+   config['keep_frame_mod_min'] = keep_frame_mod_min
+   config['keep_frame_mod_max'] = keep_frame_mod_max
    config['steady_mode'] = steady_mode
    save_config(config)
 
