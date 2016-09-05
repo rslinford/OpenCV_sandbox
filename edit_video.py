@@ -349,15 +349,6 @@ def save_config(config):
    with open(config['config_file_name'], 'w') as f:
       json.dump(config, f)
 
-def save_config_user_prefs(crop_points, keep_frame_mod, keep_frame_mod_min, keep_frame_mod_max, steady_mode):
-   config = load_config()
-   config['crop_points'] = crop_points
-   config['keep_frame_mod'] = keep_frame_mod
-   config['keep_frame_mod_min'] = keep_frame_mod_min
-   config['keep_frame_mod_max'] = keep_frame_mod_max
-   config['steady_mode'] = steady_mode
-   save_config(config)
-
 def normalize_config(config):
    config['video_source'] = config.get('video_source', 'your_video.mp4')
    config['keep_frame_mod'] = config.get('keep_frame_mod', 1)
