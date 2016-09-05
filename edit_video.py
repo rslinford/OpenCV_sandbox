@@ -256,11 +256,8 @@ def write_video(config, anchor_gray_frame):
    speed_up = True
    frames_at_this_rate = None
    try:
-      video_source = config['video_source']
-      fourcc_text = config.get('fourcc_text', 'XVID')
-      base_dir, source_file = os.path.split(video_source)
-
-      cap = cv2.VideoCapture(video_source)
+      base_dir, source_file = os.path.split(config['video_source'])
+      cap = cv2.VideoCapture(config['video_source'])
       original_fps = cap.get(cv2.CAP_PROP_FPS)
       original_video_size = get_cap_prop_size(cap)
       original_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -269,7 +266,7 @@ def write_video(config, anchor_gray_frame):
       target_file = r'xy%d-%d_%dx%d_mod%d_steady(%d)_%s_.avi' % (config['crop_x1'], config['crop_y1'], config['crop_x2'], config['crop_y2'], config['keep_frame_mod'], config['steady_mode'], source_file)
       print('\t\tto\n\t%s' % target_file)
 
-      fourcc = cv2.VideoWriter_fourcc(*fourcc_text)
+      fourcc = cv2.VideoWriter_fourcc(*config['fourcc_text'])
       video = cv2.VideoWriter(r'%s\%s' % (base_dir, target_file), fourcc, original_fps, (config['crop_x2'] - config['crop_x1'], config['crop_y2'] - config['crop_y1']), True)
       display_on = True
       frame_counter = -1
@@ -391,9 +388,8 @@ def main():
       config_file_name = r'edit_video_config.json'
    try:
       config = load_config(config_file_name)
-      video_source = config['video_source']
-      if not os.path.isfile(video_source):
-         print('video_source is not a file:\n\t%s' % video_source)
+      if not os.path.isfile(config['video_source']):
+         print('video_source is not a file:\n\t%s' % config['video_source'])
          print_config_file(config)
          return 1
       normalize_config(config)
