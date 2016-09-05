@@ -40,7 +40,7 @@ def get_cap_prop_fourcc(cap):
    original_fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
    return original_fourcc
 
-def draw_status (markup_frame, config, original_video_size, frame_counter, original_frame_count):
+def draw_status(markup_frame, config, original_video_size, frame_counter, original_frame_count):
    sd = {
       'text_thickness': 1, 
       'margin_len': 60,
@@ -74,13 +74,13 @@ def draw_progress_bar(frame, config, sd, frame_counter, original_frame_count):
    cv2.line(frame, (ind_x1, ind_y1), (ind_x2, ind_y1), (250, 200, 100), ind_height)
    keep_frame_total = int(original_frame_count / config['keep_frame_mod'])
    for i in range(keep_frame_total):
-      tick_x1 = ind_x1 + int(ind_max_len * ((i+1) / keep_frame_total))
+      tick_x1 = ind_x1 + int(ind_max_len * ((i + 1) / keep_frame_total))
       tick_y1 = ind_y1 + 2
       tick_y2 = ind_y1 + ind_half_height
       cv2.line(frame, (tick_x1, tick_y1), (tick_x1, tick_y2), sd['keystroke_color'], 1)
    cv2.rectangle(frame, (pbar_x1, pbar_y1), (pbar_x2, pbar_y2), sd['info_color'], 1)
 
-def draw_text(frame, text, location, sd, color = 'keystroke_color'):
+def draw_text(frame, text, location, sd, color='keystroke_color'):
    cv2.putText(frame, text, location, 
                sd['font'], sd['scale'], sd[color], sd['text_thickness'], sd['line'])
 
@@ -90,23 +90,23 @@ def draw_ui_keys(frame, config, sd, original_video_size):
    draw_text(frame, '%s' % str((config['crop_x1'],config['crop_y1'])), (text_x1, text_y1), sd, 'info_color')
    text_x1 += 10
    text_y1 += sd['line_height'] - 5
-   draw_text(frame, '  w', (text_x1-3, text_y1), sd)
+   draw_text(frame, '  w', (text_x1 - 3, text_y1), sd)
    text_y1 += sd['line_height'] - 5
    draw_text(frame, 'a s d', (text_x1, text_y1), sd)
 
    # Crop-corner lower-right
-   (text_x1, text_y1) = (config['crop_x2'] - sd['margin_len']*3, config['crop_y2'] - 10)
+   (text_x1, text_y1) = (config['crop_x2'] - sd['margin_len'] * 3, config['crop_y2'] - 10)
    draw_text(frame, '%s' % str((config['crop_x2'],config['crop_y2'])), (text_x1, text_y1), sd, 'info_color')
    text_x1 += 15
    text_y1 -= sd['line_height'] - 2
    draw_text(frame, 'j k l', (text_x1, text_y1), sd)
    text_y1 -= sd['line_height'] - 5
-   draw_text(frame, '  i', (text_x1-3, text_y1), sd)
+   draw_text(frame, '  i', (text_x1 - 3, text_y1), sd)
 
    # Other keys
    text_x1 = sd['margin_len']
    text_y1 = sd['margin_len'] + sd['line_height'] * 3
-   orig_to_new_size_text = r'%s -> %s' % (str((original_video_size)), str((config['crop_x2']-config['crop_x1'], config['crop_y2']-config['crop_y1'])))
+   orig_to_new_size_text = r'%s -> %s' % (str((original_video_size)), str((config['crop_x2'] - config['crop_x1'], config['crop_y2'] - config['crop_y1'])))
    draw_text(frame, orig_to_new_size_text, (text_x1, text_y1), sd, 'info_color')
    text_y1 += sd['line_height']
    draw_text(frame, 'o (create video)', (text_x1, text_y1), sd)
@@ -198,7 +198,7 @@ def get_user_input_while_looping(config):
          markup_frame = cv2.copyMakeBorder(keeper_frame, 0,0,0,0, cv2.BORDER_REPLICATE)
          cv2.rectangle(markup_frame, (config['crop_x1'], config['crop_y1']), (config['crop_x2'], config['crop_y2']), (0, 0, 255), 1)
          if config['steady_mode']:
-            (xshifted, yshifted, x2shifted, y2shifted) = (round(config['crop_x1']+xshift), round(config['crop_y1']+yshift), round(config['crop_x2']+xshift), round(config['crop_y2']+yshift))
+            (xshifted, yshifted, x2shifted, y2shifted) = (round(config['crop_x1'] + xshift), round(config['crop_y1'] + yshift), round(config['crop_x2'] + xshift), round(config['crop_y2'] + yshift))
             cv2.rectangle(markup_frame, (xshifted, yshifted), (x2shifted, y2shifted), (0, 255, 0), 1)
 
          draw_status(markup_frame, config, original_video_size, frame_counter, original_frame_count)
@@ -271,7 +271,7 @@ def write_video(config, anchor_gray_frame):
       print('\t\tto\n\t%s' % target_file)
 
       fourcc = cv2.VideoWriter_fourcc(*fourcc_text)
-      video = cv2.VideoWriter(r'%s\%s' % (base_dir, target_file), fourcc, original_fps, (config['crop_x2']-config['crop_x1'], config['crop_y2']-config['crop_y1']), True)
+      video = cv2.VideoWriter(r'%s\%s' % (base_dir, target_file), fourcc, original_fps, (config['crop_x2'] - config['crop_x1'], config['crop_y2'] - config['crop_y1']), True)
       display_on = True
       frame_counter = -1
       anchor_gray_frame_float32 = np.float32(anchor_gray_frame)
@@ -304,7 +304,7 @@ def write_video(config, anchor_gray_frame):
             gray_frame = cv2.cvtColor(original_frame, cv2.COLOR_BGR2GRAY)
             gray_frame_float32 = np.float32(gray_frame)
             (xshift, yshift), some_number = cv2.phaseCorrelate(anchor_gray_frame_float32, gray_frame_float32)
-            xs, ys, xs2, ys2 = round(config['crop_x1']+xshift), round(config['crop_y1']+yshift), round(config['crop_x2']+xshift), round(config['crop_y2']+yshift)
+            xs, ys, xs2, ys2 = round(config['crop_x1'] + xshift), round(config['crop_y1'] + yshift), round(config['crop_x2'] + xshift), round(config['crop_y2'] + yshift)
          else:
             xs, ys, xs2, ys2 = config['crop_x1'], config['crop_y1'], config['crop_x2'], config['crop_y2']
 
