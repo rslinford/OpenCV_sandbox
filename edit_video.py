@@ -1,10 +1,9 @@
 import os
+import sys
 import json
 import imutils
 import numpy as np
 import cv2
-
-config_file_name = r'edit_video_config.json'
 
 def ensure_a_window(display_on, frame):
    show(display_on, frame)
@@ -235,7 +234,7 @@ def get_user_input_while_looping(config):
             config['keep_frame_mod'] -= 1
          elif key == ord('z'):
             save_config(config)
-            print_config_file()
+            print_config_file(config)
 
       return anchor_gray_frame
    except (KeyboardInterrupt):
@@ -341,16 +340,16 @@ def edit_movie(config):
    anchor_gray_frame = get_user_input_while_looping(config)
    write_video(config, anchor_gray_frame)
 
-def print_config_file():
+def print_config_file(config):
    print('Config file located at:\n\t%s\nPoint "video_source" path to your video. Use fully qualified path or relative path. Current working directory:\n\t%s' \
-      % (config_file_name, os.getcwd()))
+      % (config['config_file_name'], os.getcwd()))
    print('Current config contents:')
-   with open(config_file_name, 'r') as f:
+   with open(config['config_file_name'], 'r') as f:
       for line in f:
          print(line)
 
 def save_config(config):
-   with open(config_file_name, 'w') as f:
+   with open(config['config_file_name'], 'w') as f:
       json.dump(config, f)
 
 def save_config_user_prefs(crop_points, keep_frame_mod, keep_frame_mod_min, keep_frame_mod_max, steady_mode):
@@ -374,25 +373,28 @@ def normalize_config(config):
    config['crop_y2'] = config.get('crop_y2', 1080)
    config['fourcc_text'] = config.get('fourcc_text', 'XVID')
 
-def create_default_config():
-   config = {}
+def create_default_config(config_file_name):
+   config = {'config_file_name':config_file_name}
    normalize_config(config)
    save_config(config)
    print('New config file created.')
-   print_config_file()
+   print_config_file(config)
 
-def load_config():
+def load_config(config_file_name):
    with open(config_file_name, 'r') as f:
       config = json.load(f)
+   config['config_file_name'] = config_file_name
    return config
 
 def main():
+   if len(sys.argv) == 1:
+      config_file_name = r'edit_video_config.json'
    try:
-      config = load_config()
+      config = load_config(config_file_name)
       video_source = config['video_source']
       if not os.path.isfile(video_source):
          print('video_source is not a file:\n\t%s' % video_source)
-         print_config_file()
+         print_config_file(config)
          return 1
       normalize_config(config)
       edit_movie(config)
