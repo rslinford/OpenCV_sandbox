@@ -263,11 +263,15 @@ def write_video(config, anchor_gray_frame):
       original_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
       # Write the resulting movie
-      target_file = r'xy%d-%d_%dx%d_mod%d_steady(%d)_%s_.avi' % (config['crop_x1'], config['crop_y1'], config['crop_x2'], config['crop_y2'], config['keep_frame_mod'], config['steady_mode'], source_file)
-      print('\t\tto\n\t%s' % target_file)
+      target_file_base = r'xy%d-%d_%dx%d_mod%d_steady(%d)_%s_' % (config['crop_x1'], config['crop_y1'], config['crop_x2'], config['crop_y2'], config['keep_frame_mod'], config['steady_mode'], source_file)
+      target_video_filename = r'%s.avi' % target_file_base 
+      target_config_filename = r'%s\%s.json' % (base_dir, target_file_base)
+      config['config_file_name'] = target_config_filename
+      save_config(config)
+      print('\t\tto\n\t%s' % target_video_filename)
 
       fourcc = cv2.VideoWriter_fourcc(*config['fourcc_text'])
-      video = cv2.VideoWriter(r'%s\%s' % (base_dir, target_file), fourcc, original_fps, (config['crop_x2'] - config['crop_x1'], config['crop_y2'] - config['crop_y1']), True)
+      video = cv2.VideoWriter(r'%s\%s' % (base_dir, target_video_filename), fourcc, original_fps, (config['crop_x2'] - config['crop_x1'], config['crop_y2'] - config['crop_y1']), True)
       display_on = True
       frame_counter = -1
       anchor_gray_frame_float32 = np.float32(anchor_gray_frame)
@@ -328,7 +332,7 @@ def write_video(config, anchor_gray_frame):
          print('Releasing video source: %s' % (source_file))
          cap.release()
       if video:
-         print('Releasing video target: %s' % (target_file))
+         print('Releasing video target: %s' % (target_video_filename))
          video.release()
       print('Destroying any OpenCV')
       cv2.destroyAllWindows()
@@ -350,6 +354,7 @@ def save_config(config):
       json.dump(config, f)
 
 def normalize_config(config):
+   config['config_file_name'] = config.get('config_file_name', r'edit_video_config.json')
    config['video_source'] = config.get('video_source', 'your_video.mp4')
    config['keep_frame_mod'] = config.get('keep_frame_mod', 1)
    config['keep_frame_mod_min'] = config.get('keep_frame_mod_min', config['keep_frame_mod'])
@@ -375,8 +380,14 @@ def load_config(config_file_name):
    return config
 
 def main():
-   if len(sys.argv) == 1:
-      config_file_name = r'edit_video_config.json'
+   config_file_name = r'edit_video_config.json'
+   # Command line config takes precedence if one is found
+   if len(sys.argv) > 1:
+      if os.path.isfile(sys.argv[1]):
+         ext = os.path.splitext(sys.argv[1])[1]
+         if ext == '.json':
+            config_file_name = os.path.normpath(sys.argv[1])
+
    try:
       config = load_config(config_file_name)
       if not os.path.isfile(config['video_source']):
