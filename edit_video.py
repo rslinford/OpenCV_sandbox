@@ -384,9 +384,16 @@ def main():
    # Command line config takes precedence if one is found
    if len(sys.argv) > 1:
       if os.path.isfile(sys.argv[1]):
-         ext = os.path.splitext(sys.argv[1])[1]
+         cmd_line_filename = os.path.normpath(sys.argv[1])
+         full_path_file_stem, ext = os.path.splitext(cmd_line_filename)
+         ext = ext.lower()
          if ext == '.json':
             config_file_name = os.path.normpath(sys.argv[1])
+         elif ext in ['.mp4', '.avi']:
+            config_file_name = r'%s.json' % (full_path_file_stem)
+            if not os.path.exists(config_file_name):
+               config = {'config_file_name':config_file_name, 'video_source':cmd_line_filename}
+               save_config(config)
 
    try:
       config = load_config(config_file_name)
